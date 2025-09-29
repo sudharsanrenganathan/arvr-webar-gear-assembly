@@ -20,6 +20,11 @@
     <div id="dbgUa"></div>
     <div id="dbgWebGL"></div>
     <div id="dbgEvents"></div>
+    <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+      <label for="cameraSelect">Camera:</label>
+      <select id="cameraSelect" style="max-width:260px;"></select>
+      <button id="applyCamera" class="btn" style="padding:4px 8px; font-size:12px;">Apply</button>
+    </div>
   </div>
 
   <!-- Start overlay (always visible first) -->
@@ -32,6 +37,8 @@
     <button id="btnStartAR" class="btn">Start</button>
     <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
   </div>
+
+  <video id="preview" autoplay muted playsinline style="position:fixed; right:8px; bottom:8px; width:200px; height:112px; object-fit:cover; z-index:15; border:1px solid #333; border-radius:6px; background:#111; display:none;"></video>
 
   <a-scene id="scene" embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" data-arjs-init="pending">
     <a-entity id="cameraRig">
@@ -76,6 +83,9 @@
       const dbgUa = document.getElementById('dbgUa');
       const dbgWebGL = document.getElementById('dbgWebGL');
       const dbgEvents = document.getElementById('dbgEvents');
+      const cameraSelect = document.getElementById('cameraSelect');
+      const applyCamera = document.getElementById('applyCamera');
+      const preview = document.getElementById('preview');
       const log = (m)=> { dbgEvents.innerText = (m + "\n" + dbgEvents.innerText).slice(0, 1200); };
 
       // UA and WebGL support
@@ -95,6 +105,24 @@
         camError.textContent = msg;
         log('event: camera-error -> ' + msg);
       });
+
+      applyCamera.addEventListener('click', async () => {
+        camError.style.display = 'none';
+        // Switch preview to the selected device
+        await stopPreview();
+        try {
+          const previewStream = await navigator.mediaDevices.getUserMedia({ video: cameraSelect.value ? { deviceId: { exact: cameraSelect.value } } : true, audio: false });
+          preview.srcObject = previewStream;
+          preview.style.display = 'block';
+        } catch (e) { log('preview error: ' + e); }
+        // Re-initialize AR.js with the selected device
+        await reinitAR(cameraSelect.value);
+      });
+
+      // Hide raw preview when AR.js video is active
+      scene.addEventListener('arjs-video-loaded', () => {
+        stopPreview();
+      });
       let videoLoaded = false;
       scene.addEventListener('arjs-video-loaded', () => {
         videoLoaded = true;
@@ -102,6 +130,19 @@
         log('event: arjs-video-loaded');
       });
       scene.addEventListener('loaded', ()=> log('event: scene loaded'));
+
+      async function populateCameras() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videos = devices.filter(d => d.kind === 'videoinput');
+        cameraSelect.innerHTML = '';
+        videos.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.deviceId;
+          opt.textContent = v.label || ('Camera ' + (cameraSelect.length + 1));
+          cameraSelect.appendChild(opt);
+        });
+        return videos;
+      }
 
       async function pickPreferredCamera() {
         // Try to pick an environment/back camera if available
@@ -117,17 +158,49 @@
         return chosen;
       }
 
+      async function stopPreview(){
+        try { if (preview.srcObject) preview.srcObject.getTracks().forEach(t => t.stop()); } catch {}
+        preview.style.display = 'none';
+      }
+
+      async function reinitAR(deviceId){
+        videoLoaded = false;
+        // Remove existing AR.js to force a clean re-init
+        try { scene.removeAttribute('arjs'); } catch {}
+        await new Promise(r => setTimeout(r, 50));
+        const arOpts = `sourceType: webcam; ${deviceId ? 'sourceId: ' + deviceId + ';' : ''} facingMode: environment; debugUIEnabled: false;`;
+        scene.setAttribute('arjs', arOpts);
+        log('arjs reinit: ' + arOpts);
+        // Safety timeout
+        setTimeout(() => {
+          if (!videoLoaded) {
+            camError.style.display = 'block';
+            camError.textContent = 'Still no video. Try another camera in the selector, then click Apply. Also ensure other apps are not using the camera.';
+            log('hint: reinit timeout without video');
+          }
+        }, 4000);
+      }
+
       btnStart.addEventListener('click', async () => {
         camError.style.display = 'none';
         try {
           // Warm-up to unlock labels and permissions
           const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
           stream.getTracks().forEach(t => t.stop());
+          // Populate camera list (labels now available)
+          await populateCameras();
+          if (cameraSelect.options.length > 0) {
+            cameraSelect.value = await pickPreferredCamera();
+          }
+          // Show a small raw preview to confirm video works
+          try {
+            const previewStream = await navigator.mediaDevices.getUserMedia({ video: cameraSelect.value ? { deviceId: { exact: cameraSelect.value } } : true, audio: false });
+            preview.srcObject = previewStream;
+            preview.style.display = 'block';
+          } catch (e) { log('preview error: ' + e); }
           // Choose a deviceId and initialize AR.js now
-          const deviceId = await pickPreferredCamera();
-          const arOpts = `sourceType: webcam; ${deviceId ? 'sourceId: ' + deviceId + ';' : ''} facingMode: environment; debugUIEnabled: false;`;
-          scene.setAttribute('arjs', arOpts);
-          log('arjs init: ' + arOpts);
+          const deviceId = cameraSelect.value || await pickPreferredCamera();
+          await reinitAR(deviceId);
 
           // If AR.js didn't load video in time, guide user
           setTimeout(() => {
