@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Hiro Marker - Full Screen</title>
+  <style>
+    html, body { margin:0; height:100%; background:#000; }
+    .wrap { display:flex; align-items:center; justify-content:center; height:100%; }
+    img { max-width:96vw; max-height:96vh; width:auto; height:auto; border:2px solid #333; background:#111; }
+    .topbar { position:fixed; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; color:#fff; font-family:Arial, sans-serif; font-size:12px; opacity:.85; }
+    .btn { background:#1f6feb; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>Use this marker on a second device at 100% zoom, brightness high, avoid reflections.</div>
+    <div>
+      <a class="btn" href="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" download>Download PNG</a>
+    </div>
+  </div>
+  <div class="wrap">
+    <img id="markerImg" alt="Hiro marker" src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" />
+  </div>
+  <script>
+    (function(){
+      const img = document.getElementById('markerImg');
+      const fallbacks = [
+        'https://unpkg.com/ar.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png',
+        'https://rawcdn.githack.com/AR-js-org/AR.js/3.3.2/three.js/examples/marker-training/examples/markers/hiro.png',
+        'https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg'
+      ];
+      let i = 0;
+      img.onerror = () => { if (i < fallbacks.length) img.src = fallbacks[i++]; };
+    })();
+  </script>
+</body>
+</html>
