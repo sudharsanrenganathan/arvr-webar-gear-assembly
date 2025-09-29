@@ -27,7 +27,7 @@
     <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
   </div>
 
-  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType:webcam; debugUIEnabled:false;">
+  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType: webcam; facingMode: user; debugUIEnabled: false;">
     <a-entity id="cameraRig">
       <a-camera cursor="rayOrigin: mouse" raycaster="objects: .draggable; far:20"></a-camera>
     </a-entity>
@@ -74,7 +74,9 @@
         camError.style.display = 'block';
         camError.textContent = 'Camera error: ' + (e && e.detail && e.detail.message ? e.detail.message : 'Permission denied or device not found.');
       });
+      let videoLoaded = false;
       scene.addEventListener('arjs-video-loaded', () => {
+        videoLoaded = true;
         startOverlay.style.display = 'none';
       });
 
@@ -84,6 +86,13 @@
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           stream.getTracks().forEach(t => t.stop());
           setTimeout(() => { startOverlay.style.display = 'none'; }, 300);
+          // If AR.js didn't load video in time, guide user
+          setTimeout(() => {
+            if (!videoLoaded) {
+              camError.style.display = 'block';
+              camError.textContent = 'If the screen stays black: 1) Click the lock icon → allow Camera. 2) Close apps using the webcam (Teams/Zoom). 3) Try Chrome. 4) Reload and press Start again.';
+            }
+          }, 4000);
         } catch (err) {
           camError.style.display = 'block';
           camError.textContent = 'Please allow camera (Site settings → Camera → Allow). Error: ' + err;
