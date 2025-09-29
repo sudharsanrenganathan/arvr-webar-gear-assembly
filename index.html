@@ -30,6 +30,18 @@
   <div id="status">Looking for marker (Hiro)...</div>
   <div id="help">Tip: Print the <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/pattern-hiro.patt" target="_blank">Hiro marker</a> or show it on another screen.</div>
   <div id="hud"><div id="watermark">Align parts in order. Step 1: Place the crankshaft on the base.</div></div>
+  <!-- Start overlay -->
+  <div id="startOverlay" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.92); z-index:10; flex-direction:column; gap:14px;">
+    <div style="max-width:640px; text-align:center; padding:0 16px;">
+      <h2 style="margin:6px 0 10px; font-size:20px;">Allow Camera to Start AR</h2>
+      <p style="opacity:.85; font-size:14px;">Click Start, then allow camera access in your browser. If you see a lock icon near the address bar, set Camera to Allow. On laptops, ensure the webcam is not blocked.</p>
+    </div>
+    <button id="btnStartAR" class="btn" style="font-size:14px; padding:10px 16px;">Start AR</button>
+    <div style="opacity:.8; font-size:12px; text-align:center; max-width:640px; padding:0 16px;">
+      Need a marker? Use this image: <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">Hiro marker (PNG)</a>
+    </div>
+    <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
+  </div>
 
   <!-- AR Scene -->
   <a-scene
@@ -103,6 +115,37 @@
       const status = document.getElementById('status');
       marker.addEventListener('markerFound', () => status.textContent = 'Marker found. Start assembling.');
       marker.addEventListener('markerLost', () => status.textContent = 'Marker lost. Point camera at Hiro marker.');
+
+      // Start AR overlay flow
+      const startOverlay = document.getElementById('startOverlay');
+      const btnStart = document.getElementById('btnStartAR');
+      const camError = document.getElementById('camError');
+
+      const scene = document.querySelector('a-scene');
+      scene.addEventListener('camera-error', (e) => {
+        camError.style.display = 'block';
+        camError.textContent = 'Camera error: ' + (e && e.detail && e.detail.message ? e.detail.message : 'Permission denied or device not found.');
+      });
+      scene.addEventListener('arjs-video-loaded', () => {
+        startOverlay.style.display = 'none';
+      });
+
+      btnStart.addEventListener('click', async () => {
+        camError.style.display = 'none';
+        try {
+          // Explicitly ask for camera to trigger permission prompt
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // Immediately stop tracks; AR.js will open its own stream
+          stream.getTracks().forEach(t => t.stop());
+          // Give AR.js a moment, then hide overlay if video starts
+          setTimeout(() => {
+            startOverlay.style.display = 'none';
+          }, 300);
+        } catch (err) {
+          camError.style.display = 'block';
+          camError.textContent = 'Please allow camera in the browser (Site settings → Camera → Allow). Error: ' + err;
+        }
+      });
     });
   </script>
 </body>
