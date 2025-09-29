@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Worm Gear Demo (MindAR Image Tracking)</title>
+  <style>
+    body, html { margin:0; padding:0; background:#000; color:#fff; font-family: Arial, sans-serif; }
+    .btn { background:#1f6feb; border:none; color:#fff; padding:10px 16px; border-radius:6px; font-size:14px; }
+    #toast { position: fixed; left: 50%; top: 12%; transform: translateX(-50%); background: rgba(0,0,0,.8); padding: 10px 12px; border-radius: 8px; font-size: 14px; z-index: 10; display:none; }
+    #hud { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 30%, rgba(0,0,0,.7) 100%); z-index: 5; }
+    #watermark { font-size: 14px; opacity: 0.9; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="./js/app.js"></script>
+</head>
+<body>
+  <div id="toast"></div>
+  <div style="position:fixed; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; z-index:9;">
+    <button id="btnReset" class="btn" style="background:#444;">Reset</button>
+    <div style="font-size:12px; opacity:.85;">Target: <a href="./assets/target.jpg" target="_blank" style="color:#70b8ff;">Your Gear Image</a></div>
+    <div>
+      <button id="btnHint" class="btn">Hint</button>
+      <button id="btnToggleAnim" class="btn" style="background:#444;">Play/Stop</button>
+    </div>
+  </div>
+  <div id="hud"><div id="watermark">Align parts in order. Step 1: Place the crankshaft on the base.</div></div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./assets/target.mind; uiLoading: yes; uiError: yes; uiScanning: yes;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true">
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0"> 
+      <!-- Lighting -->
+      <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+      <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
+
+      <!-- Assembly Root (anchored to the tracked image) -->
+      <a-entity id="assemblyRoot" position="0 0 0" rotation="-90 0 0" scale="0.6 0.6 0.6" assembly-manager>
+        <a-box id="base" position="0 0 0" depth="1.4" height="0.05" width="1.4" color="#333"></a-box>
+
+        <a-entity id="snap_crankshaft" snap-zone="accept: crankshaft; p: 0 0.12 0; r: 0 0 0" visible="false"></a-entity>
+        <a-entity id="snap_worm" snap-zone="accept: worm; p: 0.35 0.2 0; r: 0 0 90" visible="false"></a-entity>
+        <a-entity id="snap_gear" snap-zone="accept: gear; p: 0 0.2 0; r: 0 0 0" visible="false"></a-entity>
+
+        <a-entity id="crankshaft" class="draggable" draggable geometry="primitive: cylinder; height: 0.8; radius: 0.05" position="-0.5 0.15 0" rotation="0 0 90" material="color: #7a7a7a; metalness: 0.8; roughness: 0.3"></a-entity>
+        <a-cylinder radius="0.09" height="0.04" position="-0.7 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+        <a-cylinder radius="0.09" height="0.04" position="-0.3 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+
+        <a-torus id="worm" class="draggable" draggable radius="0.08" radius-tubular="0.025" segments-tubular="20" color="#caa56a" position="0.7 0.22 0" rotation="0 0 0"></a-torus>
+
+        <a-cylinder id="gear" class="draggable" draggable radius="0.16" height="0.06" color="#4aa3ff" position="0 0.25 -0.45"></a-cylinder>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="-0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.29"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.61"></a-box>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // Simple toast
+    function toast(msg){
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.style.display = 'block';
+      setTimeout(()=> t.style.display='none', 1800);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const mgr = document.querySelector('#assemblyRoot').components['assembly-manager'];
+      document.getElementById('btnReset').onclick = () => mgr && mgr.resetAssembly();
+      document.getElementById('btnHint').onclick = () => mgr && mgr.showHint();
+      document.getElementById('btnToggleAnim').onclick = () => mgr && mgr.toggleAnimation();
+
+      // MindAR events via scene
+      const scene = document.querySelector('a-scene');
+      scene.addEventListener('arReady', () => toast('Camera ready'));
+      scene.addEventListener('targetFound', () => toast('Target found'));
+      scene.addEventListener('targetLost', () => toast('Target lost'));
+    });
+  </script>
+</body>
+</html>
