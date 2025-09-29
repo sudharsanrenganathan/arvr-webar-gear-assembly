@@ -32,9 +32,25 @@
     <div style="max-width:640px; text-align:center; padding:0 16px;">
       <h2 style="margin:6px 0 10px; font-size:20px;">Start AR</h2>
       <p style="opacity:.85; font-size:14px;">Tap Start and allow camera. Then point at the Hiro marker.</p>
-      <p style="opacity:.8; font-size:12px;">Marker image: <a href="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">Hiro.png</a></p>
+      <p style="opacity:.8; font-size:12px;">Marker image:
+        <a href="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">CDN 1</a> ·
+        <a href="https://unpkg.com/ar.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">CDN 2</a> ·
+        <a href="https://rawcdn.githack.com/AR-js-org/AR.js/3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">CDN 3</a>
+      </p>
       <div style="margin-top:8px;">
-        <img src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" alt="Hiro marker" style="width:200px; height:auto; border:1px solid #333;" />
+        <img id="markerImg" src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png" alt="Hiro marker" style="width:200px; height:auto; border:1px solid #333;" />
+        <script>
+          (function(){
+            const img = document.getElementById('markerImg');
+            const fallbacks = [
+              'https://unpkg.com/ar.js@3.3.2/three.js/examples/marker-training/examples/markers/hiro.png',
+              'https://rawcdn.githack.com/AR-js-org/AR.js/3.3.2/three.js/examples/marker-training/examples/markers/hiro.png',
+              'https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg'
+            ];
+            let i = 0;
+            img.onerror = () => { if (i < fallbacks.length) img.src = fallbacks[i++]; };
+          })();
+        </script>
       </div>
     </div>
     <button id="btnStartAR" class="btn">Start</button>
@@ -48,7 +64,7 @@
       <a-camera cursor="rayOrigin: mouse" raycaster="objects: .draggable; far:20"></a-camera>
     </a-entity>
 
-    <a-marker id="marker" type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/pattern-hiro.patt">
+    <a-marker id="marker" preset="hiro">
       <a-entity light="type: ambient; intensity: 0.7"></a-entity>
       <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
 
