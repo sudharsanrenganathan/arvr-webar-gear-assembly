@@ -27,7 +27,7 @@
     <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
   </div>
 
-  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType: webcam; facingMode: user; debugUIEnabled: false;">
+  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType: webcam; facingMode: environment; debugUIEnabled: false;">
     <a-entity id="cameraRig">
       <a-camera cursor="rayOrigin: mouse" raycaster="objects: .draggable; far:20"></a-camera>
     </a-entity>
@@ -83,7 +83,7 @@
       btnStart.addEventListener('click', async () => {
         camError.style.display = 'none';
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
           stream.getTracks().forEach(t => t.stop());
           setTimeout(() => { startOverlay.style.display = 'none'; }, 300);
           // If AR.js didn't load video in time, guide user
