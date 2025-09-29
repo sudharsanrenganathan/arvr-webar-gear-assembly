@@ -15,6 +15,12 @@
 </head>
 <body>
   <div id="status">Tap Start, then allow camera</div>
+  <div id="debug" style="position:fixed; top:8px; left:8px; z-index:20; background: rgba(0,0,0,.55); padding:6px 8px; border-radius:6px; font-size:11px; max-width:46vw; line-height:1.25;">
+    <div><b>Debug</b></div>
+    <div id="dbgUa"></div>
+    <div id="dbgWebGL"></div>
+    <div id="dbgEvents"></div>
+  </div>
 
   <!-- Start overlay (always visible first) -->
   <div id="startOverlay" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.92); z-index:10; flex-direction:column; gap:14px;">
@@ -67,18 +73,35 @@
       const scene = document.querySelector('a-scene');
       const status = document.getElementById('status');
       const marker = document.getElementById('marker');
-      marker.addEventListener('markerFound', () => status.textContent = 'Marker found. Start assembling.');
-      marker.addEventListener('markerLost', () => status.textContent = 'Looking for marker (Hiro)...');
+      const dbgUa = document.getElementById('dbgUa');
+      const dbgWebGL = document.getElementById('dbgWebGL');
+      const dbgEvents = document.getElementById('dbgEvents');
+      const log = (m)=> { dbgEvents.innerText = (m + "\n" + dbgEvents.innerText).slice(0, 1200); };
+
+      // UA and WebGL support
+      dbgUa.innerText = navigator.userAgent;
+      const gl = document.createElement('canvas').getContext('webgl') || document.createElement('canvas').getContext('experimental-webgl');
+      dbgWebGL.innerText = 'WebGL: ' + (gl ? 'OK' : 'Unavailable (enable hardware acceleration)');
+      if (!gl) {
+        camError.style.display = 'block';
+        camError.textContent = 'WebGL not available. Enable hardware acceleration in your browser settings and restart, or try another browser/device.';
+      }
+      marker.addEventListener('markerFound', () => { status.textContent = 'Marker found. Start assembling.'; log('event: markerFound'); });
+      marker.addEventListener('markerLost', () => { status.textContent = 'Looking for marker (Hiro)...'; log('event: markerLost'); });
 
       scene.addEventListener('camera-error', (e) => {
         camError.style.display = 'block';
-        camError.textContent = 'Camera error: ' + (e && e.detail && e.detail.message ? e.detail.message : 'Permission denied or device not found.');
+        const msg = 'Camera error: ' + (e && e.detail && e.detail.message ? e.detail.message : 'Permission denied or device not found.');
+        camError.textContent = msg;
+        log('event: camera-error -> ' + msg);
       });
       let videoLoaded = false;
       scene.addEventListener('arjs-video-loaded', () => {
         videoLoaded = true;
         startOverlay.style.display = 'none';
+        log('event: arjs-video-loaded');
       });
+      scene.addEventListener('loaded', ()=> log('event: scene loaded'));
 
       btnStart.addEventListener('click', async () => {
         camError.style.display = 'none';
@@ -90,12 +113,14 @@
           setTimeout(() => {
             if (!videoLoaded) {
               camError.style.display = 'block';
-              camError.textContent = 'If the screen stays black: 1) Click the lock icon → allow Camera. 2) Close apps using the webcam (Teams/Zoom). 3) Try Chrome. 4) Reload and press Start again.';
+              camError.textContent = 'If the screen stays black: 1) Click the lock icon → allow Camera. 2) Close apps using the webcam (Teams/Zoom). 3) Try Chrome. 4) Reload and press Start again. 5) If on desktop, try switching cameras via OS settings.';
+              log('hint: video not loaded after getUserMedia warm-up');
             }
           }, 4000);
         } catch (err) {
           camError.style.display = 'block';
           camError.textContent = 'Please allow camera (Site settings → Camera → Allow). Error: ' + err;
+          log('exception: ' + err);
         }
       });
     });
