@@ -136,6 +136,7 @@
         } catch (e) { log('preview error: ' + e); }
         // Re-initialize AR.js with the selected device
         await reinitAR(cameraSelect.value);
+        attachPreviewToArjsVideo();
       });
 
       // Hide raw preview when AR.js video is active
@@ -149,6 +150,31 @@
         log('event: arjs-video-loaded');
       });
       scene.addEventListener('loaded', ()=> log('event: scene loaded'));
+
+      // Try to attach the warmed-up preview stream directly to AR.js video element
+      async function attachPreviewToArjsVideo(){
+        try {
+          const tryAttach = () => {
+            const sys = scene.systems && scene.systems['arjs'];
+            if (!sys || !sys.arToolkitSource || !sys.arToolkitSource.domElement) return false;
+            if (preview.srcObject) {
+              const video = sys.arToolkitSource.domElement;
+              try {
+                video.srcObject = preview.srcObject;
+                video.play();
+                log('attached preview stream to arjs video');
+                return true;
+              } catch(e){ log('attach error: ' + e); }
+            }
+            return false;
+          };
+          let attempts = 0;
+          const h = setInterval(() => {
+            attempts++;
+            if (tryAttach() || attempts > 30) clearInterval(h);
+          }, 150);
+        } catch(e){ log('attachPreviewToArjsVideo error: ' + e); }
+      }
 
       async function populateCameras() {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -220,6 +246,8 @@
           // Choose a deviceId and initialize AR.js now
           const deviceId = cameraSelect.value || await pickPreferredCamera();
           await reinitAR(deviceId);
+          // After reinit, try to bind the preview stream to AR.js video element
+          attachPreviewToArjsVideo();
 
           // If AR.js didn't load video in time, guide user
           setTimeout(() => {
