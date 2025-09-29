@@ -33,7 +33,7 @@
     <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
   </div>
 
-  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType: webcam; facingMode: environment; debugUIEnabled: false;">
+  <a-scene id="scene" embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" data-arjs-init="pending">
     <a-entity id="cameraRig">
       <a-camera cursor="rayOrigin: mouse" raycaster="objects: .draggable; far:20"></a-camera>
     </a-entity>
@@ -70,7 +70,7 @@
       const startOverlay = document.getElementById('startOverlay');
       const btnStart = document.getElementById('btnStartAR');
       const camError = document.getElementById('camError');
-      const scene = document.querySelector('a-scene');
+      const scene = document.getElementById('scene');
       const status = document.getElementById('status');
       const marker = document.getElementById('marker');
       const dbgUa = document.getElementById('dbgUa');
@@ -103,12 +103,32 @@
       });
       scene.addEventListener('loaded', ()=> log('event: scene loaded'));
 
+      async function pickPreferredCamera() {
+        // Try to pick an environment/back camera if available
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videos = devices.filter(d => d.kind === 'videoinput');
+        let chosen = '';
+        // Prefer labels containing 'back' or 'rear' or 'environment'
+        const pref = videos.find(v => /back|rear|environment/i.test(v.label));
+        if (pref) chosen = pref.deviceId;
+        else if (videos.length > 1) chosen = videos[videos.length - 1].deviceId; // last device often rear on phones
+        else if (videos[0]) chosen = videos[0].deviceId;
+        log('camera picked: ' + (pref ? pref.label : (videos[0]?.label || 'unknown')));
+        return chosen;
+      }
+
       btnStart.addEventListener('click', async () => {
         camError.style.display = 'none';
         try {
+          // Warm-up to unlock labels and permissions
           const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
           stream.getTracks().forEach(t => t.stop());
-          setTimeout(() => { startOverlay.style.display = 'none'; }, 300);
+          // Choose a deviceId and initialize AR.js now
+          const deviceId = await pickPreferredCamera();
+          const arOpts = `sourceType: webcam; ${deviceId ? 'sourceId: ' + deviceId + ';' : ''} facingMode: environment; debugUIEnabled: false;`;
+          scene.setAttribute('arjs', arOpts);
+          log('arjs init: ' + arOpts);
+
           // If AR.js didn't load video in time, guide user
           setTimeout(() => {
             if (!videoLoaded) {
