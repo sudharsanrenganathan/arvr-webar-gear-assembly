@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Worm Gear Assembly (Marker)</title>
+  <style>
+    body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; background:#000; color:#fff; }
+    #hud { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 30%, rgba(0,0,0,.7) 100%); z-index: 5; }
+    #watermark { font-size: 14px; opacity: 0.9; }
+    #toolbar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 8px; z-index: 6; }
+    .btn { background: #1f6feb; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
+    .btn.secondary { background:#444; }
+    #status { position: fixed; top: 8px; right: 8px; font-size: 12px; background: rgba(0,0,0,.5); padding: 6px 8px; border-radius: 6px; z-index: 6; }
+    #help { position: fixed; left: 8px; bottom: 58px; font-size: 12px; opacity: .8; z-index: 6; }
+    a { color: #70b8ff; }
+  </style>
+  <!-- A-Frame + AR.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <!-- App scripts -->
+  <script src="./js/app.js"></script>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="btnReset" class="btn secondary">Reset</button>
+    <button id="btnHint" class="btn">Hint</button>
+    <button id="btnToggleAnim" class="btn secondary">Play/Stop</button>
+  </div>
+  <div id="status">Looking for marker (Hiro)...</div>
+  <div id="help">Tip: Print the <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/pattern-hiro.patt" target="_blank">Hiro marker</a> or show it on another screen.</div>
+  <div id="hud"><div id="watermark">Align parts in order. Step 1: Place the crankshaft on the base.</div></div>
+
+  <!-- AR Scene -->
+  <a-scene
+    embedded
+    renderer="colorManagement: true; physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    arjs="sourceType: webcam; debugUIEnabled: false;" >
+
+    <!-- Camera with mouse/touch cursor for dragging -->
+    <a-entity id="cameraRig">
+      <a-camera
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .draggable; far: 20"
+        position="0 0 0"
+        look-controls-enabled="false">
+      </a-camera>
+    </a-entity>
+
+    <!-- Marker root (Hiro). Replace with custom target later if desired. -->
+    <a-marker id="marker" type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/pattern-hiro.patt">
+      <!-- Lighting -->
+      <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+      <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
+
+      <!-- Assembly Root -->
+      <a-entity id="assemblyRoot" position="0 0 0" rotation="-90 0 0" scale="0.6 0.6 0.6" assembly-manager>
+        <!-- Base plate -->
+        <a-box id="base" position="0 0 0" depth="1.4" height="0.05" width="1.4" color="#333"></a-box>
+
+        <!-- Snap zones (invisible receptacles) -->
+        <a-entity id="snap_crankshaft" snap-zone="accept: crankshaft; p: 0 0.12 0; r: 0 0 0" visible="false"></a-entity>
+        <a-entity id="snap_worm" snap-zone="accept: worm; p: 0.35 0.2 0; r: 0 0 90" visible="false"></a-entity>
+        <a-entity id="snap_gear" snap-zone="accept: gear; p: 0 0.2 0; r: 0 0 0" visible="false"></a-entity>
+
+        <!-- Parts (draggable) -->
+        <!-- Crankshaft approximation: long cylinder with two flanges -->
+        <a-entity id="crankshaft" class="draggable" draggable geometry="primitive: cylinder; height: 0.8; radius: 0.05" position="-0.5 0.15 0" rotation="0 0 90" material="color: #7a7a7a; metalness: 0.8; roughness: 0.3"></a-entity>
+        <a-cylinder radius="0.09" height="0.04" position="-0.7 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+        <a-cylinder radius="0.09" height="0.04" position="-0.3 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+
+        <!-- Worm (approximate with stretched torus) -->
+        <a-torus id="worm" class="draggable" draggable radius="0.08" radius-tubular="0.025" segments-tubular="20" color="#caa56a" position="0.7 0.22 0" rotation="0 0 0"></a-torus>
+
+        <!-- Gear (approximate: cylinder + teeth blocks) -->
+        <a-cylinder id="gear" class="draggable" draggable radius="0.16" height="0.06" color="#4aa3ff" position="0 0.25 -0.45"></a-cylinder>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="-0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.29"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.61"></a-box>
+
+        <!-- Animation group (starts when assembled) -->
+        <a-entity id="animGroup" animation-mixer>
+          <a-entity id="spin_crank_group" rotation="0 0 0"></a-entity>
+          <a-entity id="spin_gear_group" rotation="0 0 0"></a-entity>
+        </a-entity>
+      </a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // Wire UI buttons
+    window.addEventListener('DOMContentLoaded', () => {
+      const mgr = document.querySelector('#assemblyRoot').components['assembly-manager'];
+      document.getElementById('btnReset').onclick = () => mgr && mgr.resetAssembly();
+      document.getElementById('btnHint').onclick = () => mgr && mgr.showHint();
+      document.getElementById('btnToggleAnim').onclick = () => mgr && mgr.toggleAnimation();
+
+      const marker = document.getElementById('marker');
+      const status = document.getElementById('status');
+      marker.addEventListener('markerFound', () => status.textContent = 'Marker found. Start assembling.');
+      marker.addEventListener('markerLost', () => status.textContent = 'Marker lost. Point camera at Hiro marker.');
+    });
+  </script>
+</body>
+</html>

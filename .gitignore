@@ -1,0 +1,14 @@
+# Dependencies / builds (not used but future-proof)
+node_modules/
+dist/
+build/
+.DS_Store
+Thumbs.db
+
+# Editor/OS
+.vscode/
+*.log
+
+# Local servers or caches
+.cache/
+.tmp/
