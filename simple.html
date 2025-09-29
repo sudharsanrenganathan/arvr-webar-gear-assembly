@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Worm Gear – Simple Start</title>
+  <style>
+    body, html { margin:0; padding:0; background:#000; color:#fff; font-family: Arial, sans-serif; }
+    .btn { background:#1f6feb; border:none; color:#fff; padding:10px 16px; border-radius:6px; font-size:14px; }
+    #status { position: fixed; top: 8px; right: 8px; font-size: 12px; background: rgba(0,0,0,.5); padding: 6px 8px; border-radius: 6px; z-index: 6; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <script src="./js/app.js"></script>
+</head>
+<body>
+  <div id="status">Tap Start, then allow camera</div>
+
+  <!-- Start overlay (always visible first) -->
+  <div id="startOverlay" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.92); z-index:10; flex-direction:column; gap:14px;">
+    <div style="max-width:640px; text-align:center; padding:0 16px;">
+      <h2 style="margin:6px 0 10px; font-size:20px;">Start AR</h2>
+      <p style="opacity:.85; font-size:14px;">Tap Start and allow camera. Then point at the Hiro marker.</p>
+      <p style="opacity:.8; font-size:12px;">Marker image: <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/markers/hiro.png" target="_blank">Hiro.png</a></p>
+    </div>
+    <button id="btnStartAR" class="btn">Start</button>
+    <div id="camError" style="color:#ff7b7b; font-size:12px; display:none; max-width:720px; text-align:center; padding:0 16px;"></div>
+  </div>
+
+  <a-scene embedded vr-mode-ui="enabled:false" renderer="colorManagement:true; physicallyCorrectLights:true" arjs="sourceType:webcam; debugUIEnabled:false;">
+    <a-entity id="cameraRig">
+      <a-camera cursor="rayOrigin: mouse" raycaster="objects: .draggable; far:20"></a-camera>
+    </a-entity>
+
+    <a-marker id="marker" type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/pattern-hiro.patt">
+      <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+      <a-entity light="type: directional; intensity: 0.6" position="1 2 1"></a-entity>
+
+      <a-entity id="assemblyRoot" position="0 0 0" rotation="-90 0 0" scale="0.6 0.6 0.6" assembly-manager>
+        <a-box id="base" position="0 0 0" depth="1.4" height="0.05" width="1.4" color="#333"></a-box>
+        <a-entity id="snap_crankshaft" snap-zone="accept: crankshaft; p: 0 0.12 0; r: 0 0 0" visible="false"></a-entity>
+        <a-entity id="snap_worm" snap-zone="accept: worm; p: 0.35 0.2 0; r: 0 0 90" visible="false"></a-entity>
+        <a-entity id="snap_gear" snap-zone="accept: gear; p: 0 0.2 0; r: 0 0 0" visible="false"></a-entity>
+
+        <a-entity id="crankshaft" class="draggable" draggable geometry="primitive: cylinder; height: 0.8; radius: 0.05" position="-0.5 0.15 0" rotation="0 0 90" material="color: #7a7a7a; metalness: 0.8; roughness: 0.3"></a-entity>
+        <a-cylinder radius="0.09" height="0.04" position="-0.7 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+        <a-cylinder radius="0.09" height="0.04" position="-0.3 0.15 0" rotation="0 0 90" material="color: #9b9b9b; metalness: 0.8; roughness: 0.3"></a-cylinder>
+
+        <a-torus id="worm" class="draggable" draggable radius="0.08" radius-tubular="0.025" segments-tubular="20" color="#caa56a" position="0.7 0.22 0" rotation="0 0 0"></a-torus>
+
+        <a-cylinder id="gear" class="draggable" draggable radius="0.16" height="0.06" color="#4aa3ff" position="0 0.25 -0.45"></a-cylinder>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.04" height="0.02" width="0.06" color="#4aa3ff" position="-0.16 0.25 -0.45"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.29"></a-box>
+        <a-box depth="0.06" height="0.02" width="0.04" color="#4aa3ff" position="0 0.25 -0.61"></a-box>
+      </a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const startOverlay = document.getElementById('startOverlay');
+      const btnStart = document.getElementById('btnStartAR');
+      const camError = document.getElementById('camError');
+      const scene = document.querySelector('a-scene');
+      const status = document.getElementById('status');
+      const marker = document.getElementById('marker');
+      marker.addEventListener('markerFound', () => status.textContent = 'Marker found. Start assembling.');
+      marker.addEventListener('markerLost', () => status.textContent = 'Looking for marker (Hiro)...');
+
+      scene.addEventListener('camera-error', (e) => {
+        camError.style.display = 'block';
+        camError.textContent = 'Camera error: ' + (e && e.detail && e.detail.message ? e.detail.message : 'Permission denied or device not found.');
+      });
+      scene.addEventListener('arjs-video-loaded', () => {
+        startOverlay.style.display = 'none';
+      });
+
+      btnStart.addEventListener('click', async () => {
+        camError.style.display = 'none';
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream.getTracks().forEach(t => t.stop());
+          setTimeout(() => { startOverlay.style.display = 'none'; }, 300);
+        } catch (err) {
+          camError.style.display = 'block';
+          camError.textContent = 'Please allow camera (Site settings → Camera → Allow). Error: ' + err;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
